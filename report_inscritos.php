@@ -97,7 +97,17 @@ $factura->imprimirFactura();
 
 // Función para convertir PDF a base64
 function pdfToBase64($pdfFilePath) {
+    // Verificar si el archivo existe
+    if (!file_exists($pdfFilePath)) {
+        die("El archivo PDF '$pdfFilePath' no existe.");
+    }
+
+    // Obtener el contenido del PDF en binario
     $pdfContent = file_get_contents($pdfFilePath);
-    return base64_encode($pdfContent);
+
+    // Convertir el contenido a base64
+    $base64 = base64_encode($pdfContent);
+
+    return $base64;
 }
 ?>

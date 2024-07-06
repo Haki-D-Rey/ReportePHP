@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+  </head>
+  <body>
+    <button onclick="openPdf('')">ver PDF</button>
+  </body>
+
+  <script>
+    function openPdf(base64Data) {
+      base64Data =
+        "JVBERi0xLjQKMyAwIG9iago8PC9UeXBlIC9QYWdlCi9QYXJlbnQgMSAwIFIKL1Jlc291cmNlcyAyIDAgUgovR3JvdXAgPDwvVHlwZSAvR3JvdXAgL1MgL1RyYW5zcGFyZW5jeSAvQ1MgL0RldmljZVJHQj4+Ci9Db250ZW50cyA0IDAgUj4+CmVuZG9iago0IDAgb2JqCjw8L0ZpbHRlciAvRmxhdGVEZWNvZGUgL0xlbmd0aCAxNDI5Pj4Kc3RyZWFtCnicpVjNVttGFN7zFPfkpD0JbYb5nxGrCuwQp4CpbbJio8iCqEeWiGy3p327PkIfocuuu+2idyQZSTUSIoFzZHnuzHf/f8Yc3h9Qogz8evAZPI9wBhT/yzepDTEcDLVEawhXcDRhMMrgp4OTBRy9ZcA4oRQWtzBe4HFKqLH4FJa6d8shvwPcKRhhHhhPEWNgsYRX76bzq8nCP4eLyTl+zmA8P70en/vwYjQj4J+P3/uXo9kURn98mODqyfTc/3M6f/EaFj8jpx17Doy22TMlHp4cKS32hhNesp9dnx4DffirYZ/EUJYwWmJkmyxdBhAlcLaN7v6N0nUEEvevCAQJjNebCL4F8bAw3+YELoI0uNsG38NlHAa5eyXPYC4F8UTBfBElf99maXZ880pRdfMamKXsDXueLtwjRhVw41UQJ8cQZuldHq2zVbSMw+yHT9n6Pt4EySpO8CMnYbYiafw/H7Bn+UB7LkQKnm+j8FMAywiiVbyO/0mP25KXIVQ/SxTGNOG8CUP1ETVHnHIJ1BwzAVcXXxglUntEqpaIQbjZ5gFc5hn5OrUNrpWeO03iKN1Eg7TVCpGah3/0Z+NLuPIXs8npxIcnFX0cVlpKdEsoRgX9OgWVY1BgjeI8CsOhDuWeJJa1zl9OjoFbxg1VFtOHyrNBMW0tEaoJhDkSFTkyRA4pBDG0eRzzylqhmEfZnmlsbZnHSt4ji7OzA14KKLCiesCMW4c3nBNtIY/gBD4DQ1jaepbCWUWYBs0loWW+";
+      // Decodificar los datos base64
+      const binaryString = window.atob(base64Data);
+      const binaryLen = binaryString.length;
+      const bytes = new Uint8Array(binaryLen);
+      for (let i = 0; i < binaryLen; i++) {
+        bytes[i] = binaryString.charCodeAt(i);
+      }
+
+      // Crear un Blob con los datos decodificados
+      const blob = new Blob([bytes.buffer], { type: "application/pdf" });
+
+      // Crear una URL para el Blob
+      const url = URL.createObjectURL(blob);
+
+      // Abrir la URL en una nueva ventana
+      window.open(url);
+    }
+  </script>
+</html>
