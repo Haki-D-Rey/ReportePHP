@@ -1,25 +1,29 @@
-<?php 
+<?php
 
-require('./code128.php'); 
+require('./code128.php');
 
-class builderFacturaPDF extends PDF_Code128  {
+class builderFacturaPDF extends PDF_Code128
+{
 
     // Propiedades privadas para almacenar los datos de la factura
     private $empresa;
     private $factura;
     private $cliente;
     private $productos = array();
+    private $detalleFacturas = array();
 
     protected $widths;
     protected $aligns;
 
 
     // Constructor
-    function __construct() {
+    function __construct()
+    {
         parent::__construct();
     }
 
-    function setEmpresa($nombre, $ruc, $direccion, $telefono, $email) {
+    function setEmpresa($nombre, $ruc, $direccion, $telefono, $email)
+    {
         $this->empresa = array(
             "nombre" => $nombre,
             "ruc" => $ruc,
@@ -29,7 +33,8 @@ class builderFacturaPDF extends PDF_Code128  {
         );
     }
 
-    function setFactura($numero, $fecha, $cajero) {
+    function setFactura($numero, $fecha, $cajero)
+    {
         $this->factura = array(
             "numero" => $numero,
             "fecha" => $fecha,
@@ -37,7 +42,8 @@ class builderFacturaPDF extends PDF_Code128  {
         );
     }
 
-    function setCliente($nombre, $documento, $tipoDocumento, $telefono, $direccion) {
+    function setCliente($nombre, $documento, $tipoDocumento, $telefono, $direccion)
+    {
         $this->cliente = array(
             "nombre" => $nombre,
             "documento" => $documento,
@@ -47,17 +53,30 @@ class builderFacturaPDF extends PDF_Code128  {
         );
     }
 
-    function agregarProducto($plandescripcion, $detallepre, $cantidad, $precio, $subtotal) {
+    function agregarProducto($plandescripcion, $detallepre, $cantidad, $precio, $fecha, $subtotal)
+    {
         $this->productos[] = array(
-            "plandescripcion" => $plandescripcion,
-            "detallepre"  => $detallepre,
+            "planinscripcion" => $plandescripcion,
+            "detalleprecongreso"  => $detallepre,
             "cantidad" => $cantidad,
             "precio" => $precio,
+            "fecha" =>  $fecha,
             "subtotal" => $subtotal
         );
     }
 
-    function Header() {
+    function agregarDetallesFacturas($subtotal, $iva, $total, $codigo)
+    {
+        $this->detalleFacturas[] = array(
+            "subtotal" => $subtotal,
+            "iva"  => $iva,
+            "total" => $total,
+            "codigobarra" => $codigo
+        );
+    }
+
+    function Header()
+    {
         // Logo de la empresa
         $this->Image('./img/logo.png', 165, 12, 35, 35, 'PNG');
         $this->SetFont('Arial', '', 12);
@@ -90,7 +109,7 @@ class builderFacturaPDF extends PDF_Code128  {
 
         // Detalles del cajero y número de factura
         $this->SetFont('Arial', '', 10);
-        $this->Cell(12, 7, iconv("UTF-8", "ISO-8859-1", "Cliente:"), 0, 0, 'L');
+        $this->Cell(12, 7, iconv("UTF-8", "ISO-8859-1", "Cliente: "), 0, 0, 'L');
         $this->SetTextColor(97, 97, 97);
         $this->Cell(134, 7, iconv("UTF-8", "ISO-8859-1", $this->cliente['nombre']), 0, 0, 'L');
         $this->SetFont('Arial', 'B', 10);
@@ -103,9 +122,9 @@ class builderFacturaPDF extends PDF_Code128  {
         $this->SetTextColor(39, 39, 51);
         $this->Cell(18, 7, iconv("UTF-8", "ISO-8859-1", "Dirección:"), 0, 0);
         $this->SetTextColor(97, 97, 97);
-        $this->Cell(75, 7, iconv("UTF-8", "ISO-8859-1", $this->cliente['direccion']), 0, 0);
+        $this->Cell(60, 7, iconv("UTF-8", "ISO-8859-1", $this->cliente['direccion']), 0, 0);
         $this->SetTextColor(97, 97, 97);
-        $this->Cell(33, 7, iconv("UTF-8", "ISO-8859-1", $this->cliente['tipoDocumento'] . ": " . $this->cliente['documento']), 0, 0, 'L');
+        $this->Cell(60, 7, iconv("UTF-8", "ISO-8859-1", $this->cliente['tipoDocumento'] . ": " . $this->cliente['documento']), 0, 0, 'L');
         $this->SetTextColor(39, 39, 51);
         $this->Cell(16, 7, iconv("UTF-8", "ISO-8859-1", "Telefono:"), 0, 0, 'L');
         $this->SetTextColor(97, 97, 97);
@@ -114,84 +133,86 @@ class builderFacturaPDF extends PDF_Code128  {
         $this->Ln(9);
     }
 
-    function Footer() {
+    function Footer()
+    {
         // Posición a 1.5 cm del final
         $this->SetY(-15);
         $this->SetFont('Arial', 'I', 8);
         // Número de página
-        $this->Cell(0, 10, iconv("UTF-8", "ISO-8859-1", 'Página ' . $this->PageNo() ), 0, 0, 'C');
+        $this->Cell(0, 10, iconv("UTF-8", "ISO-8859-1", 'Página ' . $this->PageNo()), 0, 0, 'C');
     }
 
-    function agregarProductos() {
+    function agregarProductos()
+    {
         // Cabecera de la tabla de productos
         $this->SetFont('Arial', '', 8);
         $this->SetFillColor(20, 97, 21);
         $this->SetDrawColor(20, 97, 21);
         $this->SetTextColor(255, 255, 255);
-        $this->Cell(60, 8, iconv("UTF-8", "ISO-8859-1", "Plan Inscripcion"), 1, 0, 'C', true);
-        $this->Cell(60, 8, iconv("UTF-8", "ISO-8859-1", "Detalle Precongreso"), 1, 0, 'C', true);
-        $this->Cell(15, 8, iconv("UTF-8", "ISO-8859-1", "Cantidad"), 1, 0, 'C', true);
-        $this->Cell(19, 8, iconv("UTF-8", "ISO-8859-1", "Precio."), 1, 0, 'C', true);
-        $this->Cell(32, 8, iconv("UTF-8", "ISO-8859-1", "Subtotal"), 1, 0, 'C', true);
+        $this->Cell(50, 8, 'Plan Inscripcion', 1, 0, 'C', true);
+        $this->Cell(60, 8, 'Detalle Precongreso', 1, 0, 'C', true);
+        $this->Cell(15, 8, 'Cantidad', 1, 0, 'C', true);
+        $this->Cell(19, 8, 'Precio', 1, 0, 'C', true);
+        $this->Cell(20, 8, 'Fecha Emision', 1, 0, 'C', true);
+        $this->Cell(22, 8, 'Subtotal', 1, 0, 'C', true);
         $this->Ln(); // Salto de línea después de la cabecera
-    
+
         // Detalles de los productos
         $this->SetTextColor(39, 39, 51);
         $xInicial = $this->GetX(); // Guardar la posición X inicial
 
-        $keysColumns = ['plandescripcion', 'detallepre', 'cantidad', 'precio', 'subtotal'];
-        $this->SetWidths(array(60, 60, 15, 19, 32));
+        $keysColumns = ['planinscripcion', 'detalleprecongreso', 'cantidad', 'precio', 'fecha', 'subtotal'];
+        $this->SetWidths(array(50, 60, 15, 19, 20, 22));
         foreach ($this->productos as $key => $producto) {
             $this->Row($producto,  $keysColumns);
         }
     }
 
-    
-    
-    function agregarTotales($subtotal, $iva, $total) {
+
+
+    function agregarTotales()
+    {
+
         // Totales
         $this->SetFont('Arial', 'B', 9);
         $this->Cell(100, 7, iconv("UTF-8", "ISO-8859-1", ''), 'T', 0, 'C');
         $this->Cell(15, 7, iconv("UTF-8", "ISO-8859-1", ''), 'T', 0, 'C');
         $this->Cell(32, 7, iconv("UTF-8", "ISO-8859-1", "SUBTOTAL"), 'T', 0, 'C');
-        $this->Cell(34, 7, iconv("UTF-8", "ISO-8859-1", "+ " . $subtotal), 'T', 0, 'C');
+        $this->Cell(34, 7, iconv("UTF-8", "ISO-8859-1", "+ " . $this->detalleFacturas[0]['subtotal']), 'T', 0, 'C');
         $this->Ln(7);
 
         $this->Cell(100, 7, iconv("UTF-8", "ISO-8859-1", ''), '', 0, 'C');
         $this->Cell(15, 7, iconv("UTF-8", "ISO-8859-1", ''), '', 0, 'C');
-        $this->Cell(32, 7, iconv("UTF-8", "ISO-8859-1", "IVA (13%)"), '', 0, 'C');
-        $this->Cell(34, 7, iconv("UTF-8", "ISO-8859-1", "+ " . $iva), '', 0, 'C');
+        $this->Cell(32, 7, iconv("UTF-8", "ISO-8859-1", "IVA (0%)"), '', 0, 'C');
+        $this->Cell(34, 7, iconv("UTF-8", "ISO-8859-1", "+ " . $this->detalleFacturas[0]['iva']), '', 0, 'C');
         $this->Ln(7);
 
         $this->Cell(100, 7, iconv("UTF-8", "ISO-8859-1", ''), '', 0, 'C');
         $this->Cell(15, 7, iconv("UTF-8", "ISO-8859-1", ''), '', 0, 'C');
         $this->Cell(32, 7, iconv("UTF-8", "ISO-8859-1", "TOTAL A PAGAR"), 'T', 0, 'C');
-        $this->Cell(34, 7, iconv("UTF-8", "ISO-8859-1", $total), 'T', 0, 'C');
+        $this->Cell(34, 7, iconv("UTF-8", "ISO-8859-1", $this->detalleFacturas[0]['total']), 'T', 0, 'C');
         $this->Ln(7);
 
         $this->Cell(100, 7, iconv("UTF-8", "ISO-8859-1", ''), '', 0, 'C');
         $this->Cell(15, 7, iconv("UTF-8", "ISO-8859-1", ''), '', 0, 'C');
         $this->Cell(32, 7, iconv("UTF-8", "ISO-8859-1", "TOTAL PAGADO"), '', 0, 'C');
-        $this->Cell(34, 7, iconv("UTF-8", "ISO-8859-1", "$100.00 USD"), '', 0, 'C');
+        $this->Cell(34, 7, iconv("UTF-8", "ISO-8859-1", $this->detalleFacturas[0]['total']), '', 0, 'C');
         $this->Ln(7);
 
         $this->Cell(100, 7, iconv("UTF-8", "ISO-8859-1", ''), '', 0, 'C');
         $this->Cell(15, 7, iconv("UTF-8", "ISO-8859-1", ''), '', 0, 'C');
         $this->Cell(32, 7, iconv("UTF-8", "ISO-8859-1", "CAMBIO"), '', 0, 'C');
-        $this->Cell(34, 7, iconv("UTF-8", "ISO-8859-1", "$30.00 USD"), '', 0, 'C');
+        $this->Cell(34, 7, iconv("UTF-8", "ISO-8859-1", "$00.00 USD"), '', 0, 'C');
         $this->Ln(7);
-
-        $this->Cell(100, 7, iconv("UTF-8", "ISO-8859-1", ''), '', 0, 'C');
-        $this->Cell(15, 7, iconv("UTF-8", "ISO-8859-1", ''), '', 0, 'C');
-        $this->Cell(32, 7, iconv("UTF-8", "ISO-8859-1", "USTED AHORRA"), '', 0, 'C');
-        $this->Cell(34, 7, iconv("UTF-8", "ISO-8859-1", "$0.00 USD"), '', 0, 'C');
-        $this->Ln(12);
     }
 
-    function imprimirFactura() {
+    function imprimirFactura()
+    {
+
+        ob_start(); // Iniciar el almacenamiento en el búfer de salida
         $this->AddPage();
         $this->agregarProductos();
-        $this->agregarTotales("$70.00 USD", "$0.00 USD", "$100.00 USD");
+        $this->agregarTotales();
 
         // Texto final
         $this->SetFont('Arial', '', 9);
@@ -203,16 +224,17 @@ class builderFacturaPDF extends PDF_Code128  {
         // Código de barras
         $this->SetFillColor(39, 39, 51);
         $this->SetDrawColor(23, 83, 201);
-        $this->Code128(72, $this->GetY(), "COD000001V0001", 70, 20);
+        $this->Code128(72, $this->GetY(), $this->detalleFacturas[0]['codigobarra'], 70, 20);
         $this->SetXY(12, $this->GetY() + 21);
         $this->SetFont('Arial', '', 12);
-        $this->MultiCell(0, 5, iconv("UTF-8", "ISO-8859-1", "COD000001V0001"), 0, 'C', false);
+        $this->MultiCell(0, 5, iconv("UTF-8", "ISO-8859-1", $this->detalleFacturas[0]['codigobarra']), 0, 'C', false);
 
-        // Guardar o mostrar PDF
-        $file_path = __DIR__ . '/reporte_facturas.pdf';
-        $this->Output('F', $file_path);
+        // Generar el PDF en memoria
+        $pdf_content = $this->Output('S'); // 'S' indica que el PDF se generará en una cadena y no se enviará al navegador
 
-        echo "PDF guardado en: " . $file_path;
+        ob_get_clean(); // Obtener el contenido del búfer de salida y limpiar el búfer
+
+        return $pdf_content;
     }
 
     function SetWidths($w)
@@ -232,30 +254,29 @@ class builderFacturaPDF extends PDF_Code128  {
 
         // Calculate the height of the row
         $nb = 0;
-        for($i=0;$i<count($data);$i++){
-            foreach($keysColumns as $field){
-                $nb = max($nb,$this->NbLines($this->widths[$i],$data[$field]));
+        for ($i = 0; $i < count($data); $i++) {
+            foreach ($keysColumns as $field) {
+                $nb = max($nb, $this->NbLines($this->widths[$i], $data[$field]));
             }
         }
-           
-        $h = 2*$nb;
+
+        $h = 2 * $nb;
         // Issue a page break first if needed
         $this->CheckPageBreak($h);
         // Draw the cells of the row
-        for($i=0;$i<count($data);$i++)
-        {
-             
+        for ($i = 0; $i < count($data); $i++) {
+
             $w = $this->widths[$i];
             $a = isset($this->aligns[$i]) ? $this->aligns[$i] : 'C';
             // Save the current position
             $x = $this->GetX();
             $y = $this->GetY();
             // Draw the border
-            $this->Rect($x,$y,$w,$h);
+            $this->Rect($x, $y, $w, $h);
             // Print the text
-            $this->MultiCell($w,5,$data[$keysColumns[$i]],0,$a);
+            $this->MultiCell($w, 5, iconv('UTF-8', 'windows-1252', $data[$keysColumns[$i]]), 0, $a);
             // Put the position to the right of the cell
-            $this->SetXY($x+$w,$y);
+            $this->SetXY($x + $w, $y);
         }
         // Go to the next line
         $this->Ln($h);
@@ -264,33 +285,31 @@ class builderFacturaPDF extends PDF_Code128  {
     function CheckPageBreak($h)
     {
         // If the height h would cause an overflow, add a new page immediately
-        if($this->GetY()+$h>$this->PageBreakTrigger)
+        if ($this->GetY() + $h > $this->PageBreakTrigger)
             $this->AddPage($this->CurOrientation);
     }
 
     function NbLines($w, $txt)
     {
         // Compute the number of lines a MultiCell of width w will take
-        if(!isset($this->CurrentFont))
+        if (!isset($this->CurrentFont))
             $this->Error('No font has been set');
         $cw = $this->CurrentFont['cw'];
-        if($w==0)
-            $w = $this->w-$this->rMargin-$this->x;
-        $wmax = ($w-2*$this->cMargin)*1000/$this->FontSize;
-        $s = str_replace("\r",'',(string)$txt);
+        if ($w == 0)
+            $w = $this->w - $this->rMargin - $this->x;
+        $wmax = ($w - 2 * $this->cMargin) * 1000 / $this->FontSize;
+        $s = str_replace("\r", '', (string)$txt);
         $nb = strlen($s);
-        if($nb>0 && $s[$nb-1]=="\n")
+        if ($nb > 0 && $s[$nb - 1] == "\n")
             $nb--;
         $sep = -1;
         $i = 0;
         $j = 0;
         $l = 0;
         $nl = 1;
-        while($i<$nb)
-        {
+        while ($i < $nb) {
             $c = $s[$i];
-            if($c=="\n")
-            {
+            if ($c == "\n") {
                 $i++;
                 $sep = -1;
                 $j = $i;
@@ -298,30 +317,22 @@ class builderFacturaPDF extends PDF_Code128  {
                 $nl++;
                 continue;
             }
-            if($c==' ')
+            if ($c == ' ')
                 $sep = $i;
             $l += $cw[$c];
-            if($l>$wmax)
-            {
-                if($sep==-1)
-                {
-                    if($i==$j)
+            if ($l > $wmax) {
+                if ($sep == -1) {
+                    if ($i == $j)
                         $i++;
-                }
-                else
-                    $i = $sep+1;
+                } else
+                    $i = $sep + 1;
                 $sep = -1;
                 $j = $i;
                 $l = 0;
                 $nl++;
-            }
-            else
+            } else
                 $i++;
         }
         return $nl;
     }
-} 
-
-
-
-?>
+}
