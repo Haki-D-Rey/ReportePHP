@@ -15,7 +15,7 @@ class GeneradorFacturas
 
     public function generarFacturas()
     {
-        $pageSize = 100; // Número de registros por página
+        $pageSize = 10; // Número de registros por página
         $page = 0; // Página inicial
 
         do {
@@ -35,79 +35,134 @@ class GeneradorFacturas
 
 
             while ($factura = $result->fetch_assoc()) {
-                $this->generarYGuardarFactura($factura);
+                $facturas[] = $factura;
             }
+
+            $this->generarYGuardarFacturasMasiva($facturas);
 
             $page++;
         } while ($result->num_rows > 0);
     }
 
 
-    private function generarYGuardarFactura($factura)
+    private function generarYGuardarFacturasMasiva($facturas)
     {
-        try {
-            // Generar la factura PDF
-            $facturaPDF = new builderFacturaPDF();
-            $facturaPDF->setEmpresa('HOSPITAL MILITAR ESCUELA "DR. ALEJANDRO DÁVILA BOLAÑOS"', "J0310000002860", "Rotonda el Guegüense 400 m. al Este & 300 m. al Sur. Managua, Nicaragua.", "(505) 1801-1000", "congresomedico@hospitalmilitar.com.ni");
-            $facturaPDF->setFactura($factura['id_participante'], date("d-m-Y"), "");
-            $facturaPDF->setCliente($factura['nombre'], $factura['identificacion'], "DNI", $factura['telefono'], $factura['departamento'] . ', ' . $factura['pais']);
+        $facturasData = [];
+        $fecha_actual = date('Y-m-d H:i:s');
+        $index = false;
 
-            //
-            $datosInscripcion = $this->getDetilsEventParticipant($factura['id_participante']);
-            $valorPrecio = mb_strtoupper($datosInscripcion[0]['divisa'] . '' . $datosInscripcion[0]['precio'] . ' USD', 'UTF-8');
+        foreach ($facturas as $i => $factura) {
+            try {
+                // Generar la factura PDF
+                $facturaPDF = new builderFacturaPDF();
+                $facturaPDF->setEmpresa('HOSPITAL MILITAR ESCUELA "DR. ALEJANDRO DÁVILA BOLAÑOS"', "J0310000002860", "Rotonda el Guegüense 400 m. al Este & 300 m. al Sur. Managua, Nicaragua.", "(505) 1801-1000", "congresomedico@hospitalmilitar.com.ni");
+                $facturaPDF->setFactura($factura['id_participante'], date("d-m-Y"), "");
+                $facturaPDF->setCliente($factura['nombre'], $factura['identificacion'], "DNI", $factura['telefono'], $factura['departamento'] . ', ' . $factura['pais']);
 
-            // Añadir productos
-            $facturaPDF->agregarProducto(mb_strtoupper($datosInscripcion[0]['planinscripcion'], 'UTF-8'), mb_strtoupper($datosInscripcion[0]['detalleprecongreso'], 'UTF-8'), 1, $valorPrecio,  mb_strtoupper($datosInscripcion[0]['fecha'], 'UTF-8'), $valorPrecio);
-            $codigoBarra = $this->generarCodigoBarraPersonalizado($datosInscripcion[0]['nombreCompleto'], $datosInscripcion[0]['codigo_participante']);
-            $facturaPDF->agregarDetallesFacturas($valorPrecio, "$0.00 USD", $valorPrecio, $codigoBarra);
-            $pdfContent = $facturaPDF->imprimirFactura();
+                $datosInscripcion = $this->getDetilsEventParticipant($factura['id_participante']);
+                $valorPrecio = mb_strtoupper($datosInscripcion[0]['divisa'] . '' . $datosInscripcion[0]['precio'] . ' USD', 'UTF-8');
 
-            // Guardar el PDF y convertirlo a base64
-            $file_path = __DIR__ . '/reporte_factura_' . trim($datosInscripcion[0]['nombreCompleto']) . '-' . $datosInscripcion[0]['codigo_participante'] . '.pdf';
-            $facturaPDF->Output('F', $file_path);
+                // Añadir productos
+                $facturaPDF->agregarProducto(mb_strtoupper($datosInscripcion[0]['planinscripcion'], 'UTF-8'), mb_strtoupper($datosInscripcion[0]['detalleprecongreso'], 'UTF-8'), 1, $valorPrecio,  mb_strtoupper($datosInscripcion[0]['fecha'], 'UTF-8'), $valorPrecio);
+                $codigoBarra = $this->generarCodigoBarraPersonalizado($datosInscripcion[0]['nombreCompleto'], $datosInscripcion[0]['codigo_participante']);
+                $facturaPDF->agregarDetallesFacturas($valorPrecio, "$0.00 USD", $valorPrecio, $codigoBarra);
+                $pdfContent = $facturaPDF->imprimirFactura();
 
-            // Convert PDF content to Base64
-            $pdfBase64 = $this->pdfToBase64($pdfContent);
+                // Guardar el PDF y convertirlo a base64
+                if ($index == false) {
+                    $file_path = __DIR__ . '/reporte_factura_' . trim($datosInscripcion[0]['nombreCompleto']) . '-' . $datosInscripcion[0]['codigo_participante'] . '.pdf';
+                    $facturaPDF->Output('F', $file_path);
+                }
+                $index = true;
 
-            $conexion = $this->conexionBD->getConexion();
+                // Convert PDF content to Base64
+                $pdfBase64 = $this->pdfToBase64($pdfContent);
 
-            $validate = $this->validateExistsDataPdf($conexion, $datosInscripcion[0]['id_participante_verificacion']);
-            $fecha_actual = date('Y-m-d H:i:s');
+                $validate = $this->validateExistsDataPdf($this->conexionBD->getConexion(), $datosInscripcion[0]['id_participante_verificacion']);
+                $descripcion = 'reporte_factura_' . trim($datosInscripcion[0]['nombreCompleto']) . '-' . $datosInscripcion[0]['codigo_participante'] . '.pdf';
+                $typeMIME = 'application/pdf';
 
-            if ($validate > 0) {
-                // Record exists, perform an update
-                $updateQuery = "UPDATE wp_eiparticipante_factura_evento 
-                                SET descripcion = ?, archivoBase64 = ?, TYPEMIME = ?, fecha_modificacion = ?
-                                WHERE id_participante_verificacion = ?";
-                $updateStmt = $conexion->prepare($updateQuery);
-                if ($updateStmt === false) {
-                    throw new Exception("Error preparing the update statement: " . $conexion->error);
+                if ($validate > 0) {
+                    // Record exists, add data to update array
+                    $facturasData[] = [
+                        'id_participante_verificacion' => $datosInscripcion[0]['id_participante_verificacion'],
+                        'descripcion' => $descripcion,
+                        'archivoBase64' => $pdfBase64,
+                        'TYPEMIME' => $typeMIME,
+                        'fecha_modificacion' => $fecha_actual,
+                        'accion' => 'update'
+                    ];
+                } else {
+                    // Add data to insert array
+                    $facturasData[] = [
+                        'id_participante_verificacion' => $datosInscripcion[0]['id_participante_verificacion'],
+                        'descripcion' => $descripcion,
+                        'archivoBase64' => $pdfBase64,
+                        'TYPEMIME' => $typeMIME,
+                        'fecha_creacion' => $fecha_actual,
+                        'accion' => 'insert'
+                    ];
+                }
+            } catch (Exception $e) {
+                echo 'Error al generar/guardar la factura para el participante ID ' . $factura['id_participante'] . ': ' . $e->getMessage() . '<br>';
+            } finally {
+                var_dump($i);
+            }
+        }
+
+        $this->insertarFacturasMasivas($facturasData);
+    }
+
+    private function insertarFacturasMasivas($facturasData)
+    {
+        $conexion = $this->conexionBD->getConexion();
+
+        $insertData = [];
+        $updateData = [];
+
+        foreach ($facturasData as $factura) {
+            if ($factura['accion'] === 'insert') {
+                $insertData[] = $factura;
+            } elseif ($factura['accion'] === 'update') {
+                $updateData[] = $factura;
+            }
+        }
+
+        if (!empty($insertData)) {
+            $arraySize = count($insertData);
+            for ($i = 0; $i < $arraySize; $i += 10) {
+                // Number of elements in this chunk
+                $thisChunk = min(10, $arraySize - $i);
+                // Prepare your statement
+                $insertQuery = "INSERT INTO wp_eiparticipante_factura_evento (id_participante_verificacion, descripcion, archivoBase64, TYPEMIME, fecha_creacion) VALUES ";
+                $insertValues = [];
+
+                for ($j = $i; $j < $i + $thisChunk; $j++) {
+                    $insertValues[] = "(?, ?, ?, ?, ?)";
                 }
 
-                $updateStmt->bind_param('ssssi', $descripcion, $pdfBase64, $typeMIME, $fecha_actual,$datosInscripcion[0]['id_participante_verificacion']);
-                if (!$updateStmt->execute()) {
-                    throw new Exception("Error executing the update statement: " . $updateStmt->error);
-                }
-
-                $updateStmt->close();
-            } else {
-                // Prepare the insert query
-                $insertQuery = "INSERT INTO wp_eiparticipante_factura_evento 
-                                (id_participante_verificacion, descripcion, archivoBase64, TYPEMIME, fecha_creacion) 
-                                VALUES (?, ?, ?, ?, ?)";
-
-
+                $insertQuery .= implode(', ', $insertValues);
+                $insertQuery .=";";
                 $insertStmt = $conexion->prepare($insertQuery);
 
                 if ($insertStmt === false) {
                     throw new Exception("Error preparing the statement: " . $conexion->error);
                 }
 
-                $descripcion = 'reporte_factura_' . trim($datosInscripcion[0]['nombreCompleto']) . '-' . $datosInscripcion[0]['codigo_participante'] . '.pdf';
-                $typeMIME = 'application/pdf';
+                $bindParams = [];
+                foreach (array_slice($insertData, $i, $thisChunk) as $factura) {
+                    $bindParams = array_merge($bindParams, [
+                        $factura['id_participante_verificacion'],
+                        $factura['descripcion'],
+                        $factura['archivoBase64'],
+                        $factura['TYPEMIME'],
+                        $factura['fecha_creacion']
+                    ]);
+                }
 
-                // Bind parameters
-                $insertStmt->bind_param('issss', $datosInscripcion[0]['id_participante_verificacion'], $descripcion, $pdfBase64, $typeMIME, $fecha_actual );
+                // Dynamically bind parameters
+                $types = str_repeat('issss', $thisChunk);
+                $insertStmt->bind_param($types, ...$bindParams);
 
                 // Execute the statement
                 if (!$insertStmt->execute()) {
@@ -117,12 +172,39 @@ class GeneradorFacturas
                 // Close the statement
                 $insertStmt->close();
             }
-
-            echo 'Factura generada y guardada en la base de datos para el participante ID: ' . $factura['id_participante'] . '<br>';
-        } catch (Exception $e) {
-            echo 'Error al generar/guardar la factura para el participante ID ' . $factura['id_participante'] . ': ' . $e->getMessage() . '<br>';
         }
+
+        // if (!empty($updateData)) {
+        //     foreach ($updateData as $factura) {
+        //         $updateQuery = "UPDATE wp_eiparticipante_factura_evento 
+        //                         SET descripcion = ?, archivoBase64 = ?, TYPEMIME = ?, fecha_modificacion = ?
+        //                         WHERE id_participante_verificacion = ?";
+
+        //         $updateStmt = $conexion->prepare($updateQuery);
+
+        //         if ($updateStmt === false) {
+        //             throw new Exception("Error preparing the update statement: " . $conexion->error);
+        //         }
+
+        //         $updateStmt->bind_param(
+        //             'ssssi',
+        //             $factura['descripcion'],
+        //             $factura['archivoBase64'],
+        //             $factura['TYPEMIME'],
+        //             $factura['fecha_modificacion'],
+        //             $factura['id_participante_verificacion']
+        //         );
+
+        //         if (!$updateStmt->execute()) {
+        //             throw new Exception("Error executing the update statement: " . $updateStmt->error);
+        //         }
+
+        //         $updateStmt->close();
+        //     }
+        // }
     }
+
+
 
     private function validateExistsDataPdf($conexion, $id)
     {

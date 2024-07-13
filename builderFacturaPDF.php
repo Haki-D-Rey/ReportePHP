@@ -153,7 +153,7 @@ class builderFacturaPDF extends PDF_Code128
         $this->Cell(60, 8, 'Detalle Precongreso', 1, 0, 'C', true);
         $this->Cell(15, 8, 'Cantidad', 1, 0, 'C', true);
         $this->Cell(19, 8, 'Precio', 1, 0, 'C', true);
-        $this->Cell(20, 8, 'Fecha Emision', 1, 0, 'C', true);
+        $this->Cell(20, 8, 'Fecha de Pago', 1, 0, 'C', true);
         $this->Cell(22, 8, 'Subtotal', 1, 0, 'C', true);
         $this->Ln(); // Salto de línea después de la cabecera
 
